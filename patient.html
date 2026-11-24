@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Now Serving</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232c7a73'/%3E%3Crect x='27' y='14' width='10' height='36' rx='3' fill='%23fff'/%3E%3Crect x='14' y='27' width='36' height='10' rx='3' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --surface: #fff; --primary: #2c7a73; --primary-strong: #1f5f59; --primary-soft: #e1f0ed;
+    --text: #1d2e2c; --muted: #5a6e6b; --border: #d5e3e0; --closed: #8a6440; --closed-soft: #f6efe6;
+    --shadow: 0 1px 2px rgba(29,46,44,.04), 0 10px 28px rgba(29,46,44,.07);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, #eef6f4 0%, #e2eeeb 100%); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  h1, p { margin: 0; }
+
+  .patient { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; gap: clamp(12px, 2.5vh, 28px); padding: clamp(16px, 3vw, 40px); max-width: 1400px; margin: 0 auto; }
+  .head { text-align: center; }
+  .doctor-name { font-size: clamp(1.7rem, 4.6vw, 3.4rem); font-weight: 700; color: var(--primary-strong); letter-spacing: -.01em; line-height: 1.2; }
+  .address { color: var(--muted); font-size: clamp(1rem, 2vw, 1.45rem); margin-top: 6px; }
+
+  .card { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 32px; box-shadow: var(--shadow); padding: clamp(20px, 4vw, 48px); }
+  .label { text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--primary); font-size: clamp(1.15rem, 2.8vw, 2.1rem); }
+  .big-number { font-size: clamp(6rem, min(56vw, 46vh), 30rem); font-weight: 700; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; margin: .06em 0 .1em; }
+  .big-number.d3 { font-size: clamp(5rem, min(40vw, 44vh), 28rem); }
+  .big-number.d4 { font-size: clamp(4rem, min(30vw, 40vh), 24rem); }
+  .hint { color: var(--muted); font-size: clamp(1.05rem, 2.3vw, 1.7rem); }
+  .pulse { animation: pulse 1.4s ease; }
+  @keyframes pulse { 0% { transform: scale(1); } 30% { transform: scale(1.07); color: var(--primary); } 100% { transform: scale(1); } }
+
+  .big-word { font-size: clamp(3rem, 12vw, 8rem); font-weight: 700; color: var(--closed); line-height: 1.05; }
+  .big-word.calm { color: var(--primary-strong); font-size: clamp(2.2rem, 8vw, 5rem); }
+  .sub { color: var(--muted); font-size: clamp(1.1rem, 2.6vw, 1.9rem); margin-top: 10px; }
+  .icon { width: clamp(72px, 14vw, 140px); height: auto; margin: 0 auto 12px; color: var(--closed); display: block; }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .clock { text-align: right; }
+  .time { font-size: clamp(2rem, 5.2vw, 3.8rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary-strong); line-height: 1.1; }
+  .date { color: var(--muted); font-size: clamp(1.05rem, 2.3vw, 1.6rem); }
+  .pill { display: inline-flex; align-items: center; gap: 12px; padding: 10px 22px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-strong); font-weight: 700; font-size: clamp(1.15rem, 2.5vw, 1.7rem); }
+  .pill .dot { width: .7em; height: .7em; border-radius: 50%; background: #3ba27f; box-shadow: 0 0 0 5px rgba(59,162,127,.18); }
+  .pill.closed { background: var(--closed-soft); color: var(--closed); }
+  .pill.closed .dot { background: #b08a5e; box-shadow: 0 0 0 5px rgba(176,138,94,.18); }
+  .offline { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); background: #fff7e6; color: #7a5a1c; border: 1px solid #f0dcae; padding: 8px 18px; border-radius: 999px; font-weight: 600; box-shadow: var(--shadow); }
+  @media (max-width: 600px) { .foot { flex-direction: column-reverse; } .clock { text-align: center; } }
+</style>
+</head>
+<body>
+<div class="patient">
+  <header class="head">
+    <h1 class="doctor-name" id="doctorName">Loading…</h1>
+    <p class="address" id="address"></p>
+  </header>
+
+  <main class="card">
+    <div id="openView" hidden>
+      <p class="label">Now serving</p>
+      <div class="big-number" id="number" aria-live="polite">–</div>
+      <p class="hint" id="hint">Please wait until your number is shown.</p>
+    </div>
+
+    <div id="closedView" hidden>
+      <svg class="icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="14" y="8" width="36" height="50" rx="4"/><circle cx="40" cy="34" r="2.5" fill="currentColor"/><path d="M6 58h52"/>
+      </svg>
+      <p class="big-word">Closed</p>
+      <p class="sub">The dispensary is closed now. Please come back later.</p>
+    </div>
+
+    <div id="messageView" hidden>
+      <p class="big-word calm" id="msgTitle"></p>
+      <p class="sub" id="msgText"></p>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <div class="pill" id="pill" hidden><span class="dot"></span><span id="pillText">Open</span></div>
+    <div class="clock">
+      <div class="time" id="time"></div>
+      <div class="date" id="date"></div>
+    </div>
+  </footer>
+</div>
+<p class="offline" id="offline" hidden>No internet — trying to connect…</p>
+
+<script type="module">
+/* =====================================================================
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBXzyAzoiU2NgDDdA5OEvSzj7FJqWxGfMw",
+  authDomain: "quetracker-7a3fa.firebaseapp.com",
+  projectId: "quetracker-7a3fa",
+  storageBucket: "quetracker-7a3fa.firebasestorage.app",
+  messagingSenderId: "341016735755",
+  appId: "1:341016735755:web:4f2cc369b11a6bc194570e",
+  measurementId: "G-48MLHWTHQ4"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+const TIME_ZONE = "Asia/Colombo";
+/* ===================================================================== */
+
+const FB = "https://www.gstatic.com/firebasejs/12.19.0";
+const $ = (id) => document.getElementById(id);
+
+/* ---------- clock (always Sri Lanka time) ---------- */
+const timeFmt = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
+const dateFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const todayKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+function tick() {
+  const now = new Date();
+  $("time").textContent = timeFmt.format(now);
+  $("date").textContent = dateFmt.format(now);
+}
+tick();
+setInterval(tick, 1000);
+
+/* ---------- messages ---------- */
+function message(title, text) {
+  $("openView").hidden = true;
+  $("closedView").hidden = true;
+  $("pill").hidden = true;
+  $("messageView").hidden = false;
+  $("msgTitle").textContent = title;
+  $("msgText").textContent = text;
+}
+
+const updateOnline = () => { $("offline").hidden = navigator.onLine; };
+window.addEventListener("online", updateOnline);
+window.addEventListener("offline", updateOnline);
+updateOnline();
+
+/* ---------- live number ---------- */
+let data = null;
+let lastNumber = null;
+
+function render() {
+  if (!data) return;
+  const n = data.date === todayKey() ? data.number : 0; // new day => 0
+  document.title = `${data.open ? n : "Closed"} · ${data.doctorName}`;
+  $("doctorName").textContent = data.doctorName;
+  $("address").textContent = data.address || "";
+  $("messageView").hidden = true;
+  $("openView").hidden = !data.open;
+  $("closedView").hidden = data.open;
+  $("pill").hidden = false;
+  $("pill").classList.toggle("closed", !data.open);
+  $("pillText").textContent = data.open ? "Open" : "Closed";
+
+  const el = $("number");
+  if (n !== lastNumber) {
+    el.textContent = n;
+    const digits = String(n).length;
+    el.classList.toggle("d3", digits === 3);
+    el.classList.toggle("d4", digits >= 4);
+    if (lastNumber !== null) { el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
+    lastNumber = n;
+  }
+  $("hint").textContent = n === 0 ? "We will start soon. Please wait." : "Please wait until your number is shown.";
+}
+setInterval(render, 30000); // switches to 0 at midnight even if nothing changes
+
+const id = new URLSearchParams(location.search).get("d") || "";
+
+if (firebaseConfig.apiKey.startsWith("PASTE")) {
+  $("doctorName").textContent = "Now Serving";
+  message("Setup needed", "Paste the Firebase settings into this file (see the setup guide).");
+} else if (!/^[A-Za-z0-9]{10,64}$/.test(id)) {
+  $("doctorName").textContent = "Now Serving";
+  message("Link needed", "Please open the link or scan the QR code given by your dispensary.");
+} else {
+  start().catch((err) => {
+    console.error(err);
+    message("Cannot connect", "Please check your internet connection and refresh the page.");
+  });
+}
+
+async function start() {
+  const { initializeApp } = await import(`${FB}/firebase-app.js`);
+  const { getFirestore, doc, onSnapshot } = await import(`${FB}/firebase-firestore.js`);
+  const db = getFirestore(initializeApp(firebaseConfig));
+
+  onSnapshot(doc(db, "dispensaries", id), (snap) => {
+    if (!snap.exists()) {
+      $("doctorName").textContent = "Now Serving";
+      message("Not found", "This dispensary link is not correct. Please check the link.");
+      return;
+    }
+    data = snap.data();
+    render();
+  }, (err) => {
+    console.error(err);
+    message("Cannot connect", "Please refresh the page in a moment.");
+  });
+}
+</script>
+</body>
+</html>

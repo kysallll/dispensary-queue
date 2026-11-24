@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Doctor · Queue control</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232c7a73'/%3E%3Crect x='27' y='14' width='10' height='36' rx='3' fill='%23fff'/%3E%3Crect x='14' y='27' width='36' height='10' rx='3' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f2f7f6; --surface: #fff; --primary: #2c7a73; --primary-strong: #1f5f59; --primary-soft: #e1f0ed;
+    --text: #1d2e2c; --muted: #5a6e6b; --border: #d5e3e0; --danger: #b24a3f; --danger-soft: #fbecea;
+    --closed: #8a6440; --closed-soft: #f6efe6; --radius: 20px;
+    --shadow: 0 1px 2px rgba(29,46,44,.04), 0 10px 28px rgba(29,46,44,.07);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  h1, h2, p { margin: 0; }
+  .muted { color: var(--muted); } .small { font-size: .92rem; } .center { text-align: center; }
+  .logo { width: 52px; height: 52px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: clamp(18px, 3vw, 28px); }
+  .card h2 { font-size: 1.2rem; margin-bottom: 6px; color: var(--primary-strong); }
+
+  .auth-wrap { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
+  .auth-card { width: 100%; max-width: 420px; display: grid; gap: 16px; }
+  .auth-card h1 { font-size: 1.6rem; color: var(--primary-strong); }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; background: var(--bg); border-radius: 14px; }
+  .tab { font: inherit; font-weight: 700; padding: 10px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+  .tab.active { background: var(--surface); color: var(--primary-strong); box-shadow: var(--shadow); }
+  form { display: grid; gap: 14px; }
+
+  label { display: grid; gap: 6px; font-weight: 600; font-size: .95rem; }
+  input, textarea { font: inherit; font-weight: 400; color: var(--text); padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; background: #fbfdfc; width: 100%; }
+  textarea { resize: vertical; min-height: 64px; }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); background: #fff; }
+  .hint { font-weight: 400; color: var(--muted); font-size: .85rem; }
+  .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--primary-strong); text-decoration: underline; cursor: pointer; justify-self: center; font-size: .95rem; }
+
+  .msg { font-weight: 600; font-size: .95rem; min-height: 1.2em; }
+  .msg.error { color: var(--danger); } .msg.ok { color: var(--primary-strong); }
+
+  .btn { font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 18px; border-radius: 12px; border: 1.5px solid transparent; transition: background .15s; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: #fff; } .btn-primary:hover:not(:disabled) { background: var(--primary-strong); }
+  .btn-ghost { background: transparent; color: var(--primary-strong); border-color: var(--border); } .btn-ghost:hover { background: var(--primary-soft); }
+  .btn-danger-soft { background: var(--danger-soft); color: var(--danger); border-color: #f1d3cf; }
+  .btn-block { width: 100%; padding: 13px 18px; font-size: 1.05rem; }
+  .btn-sm { padding: 7px 12px; font-size: .9rem; border-radius: 10px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px clamp(16px, 4vw, 32px); background: var(--surface); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand .logo { width: 40px; height: 40px; flex: none; }
+  .brand-title { font-weight: 700; font-size: 1.15rem; color: var(--primary-strong); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .dash { max-width: 900px; margin: 0 auto; padding: clamp(16px, 4vw, 32px) clamp(12px, 4vw, 32px) 48px; display: grid; gap: 18px; grid-template-columns: 1fr 1fr; }
+  .dash > .wide { grid-column: 1 / -1; }
+  @media (max-width: 680px) { .dash { grid-template-columns: 1fr; } }
+
+  .label-caps { text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--primary); font-size: clamp(1.1rem, 2.6vw, 1.6rem); }
+  .counter-card { text-align: center; display: grid; gap: 14px; }
+  .counter { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 3vw, 32px); }
+  .round-btn { width: clamp(64px, 15vw, 116px); aspect-ratio: 1; border-radius: 50%; flex: none; font: inherit; font-size: clamp(2.4rem, 6vw, 3.8rem); font-weight: 600; line-height: 1; border: 2px solid var(--border); background: var(--surface); color: var(--primary-strong); cursor: pointer; display: grid; place-items: center; padding: 0 0 .08em; transition: background .15s, transform .08s; }
+  .round-btn:hover:not(:disabled) { background: var(--primary-soft); }
+  .round-btn:active:not(:disabled) { transform: scale(.95); }
+  .round-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .round-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .round-btn.primary:hover:not(:disabled) { background: var(--primary-strong); }
+  .counter-input { width: 4.2ch; min-width: 0; padding: .02em .1em; font: inherit; font-size: clamp(3.6rem, 13vw, 8.5rem); font-weight: 700; text-align: center; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); background: transparent; border: 2px dashed transparent; border-radius: 20px; cursor: text; }
+  .counter-input:hover { border-color: var(--border); }
+  .counter-input:focus { border-color: var(--primary); background: var(--primary-soft); box-shadow: none; }
+
+  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; background: var(--bg); border-radius: 14px; margin: 10px 0 0; }
+  .seg { font: inherit; font-weight: 700; font-size: 1.05rem; cursor: pointer; padding: 12px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .seg .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; opacity: .6; }
+  .seg.active { background: var(--surface); box-shadow: var(--shadow); }
+  .seg.active.open { color: var(--primary-strong); } .seg.active.closed { color: var(--closed); }
+  .seg.active .dot { opacity: 1; }
+  .card > .btn { margin-top: 14px; }
+  .row { display: flex; gap: 8px; margin-top: 10px; }
+  .row input { flex: 1; font-size: .95rem; }
+  .notice { background: var(--primary-soft); color: var(--primary-strong); border-radius: 12px; padding: 14px 16px; }
+  .notice code { background: #fff; padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<!-- Shown only if the Firebase settings have not been pasted in yet -->
+<main id="setupView" class="auth-wrap" hidden>
+  <div class="card auth-card">
+    <h1>Almost ready</h1>
+    <p class="notice">Open <code>doctor.html</code> and <code>patient.html</code> in Notepad and paste your Firebase settings where it says <b>PASTE YOUR FIREBASE SETTINGS HERE</b>. See the setup guide.</p>
+  </div>
+</main>
+
+<main id="loadingView" class="auth-wrap">
+  <p class="muted">Loading…</p>
+</main>
+
+<!-- Log in / Sign up / Forgot password -->
+<main id="authView" class="auth-wrap" hidden>
+  <div class="card auth-card">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2c7a73"/><rect x="27" y="14" width="10" height="36" rx="3" fill="#fff"/><rect x="14" y="27" width="36" height="10" rx="3" fill="#fff"/></svg>
+    <div>
+      <h1 id="authTitle">Doctor login</h1>
+      <p class="muted" id="authSub">Log in to update the number for your dispensary.</p>
+    </div>
+    <div class="tabs" id="tabs" role="tablist">
+      <button class="tab active" type="button" data-tab="login">Log in</button>
+      <button class="tab" type="button" data-tab="signup">Create account</button>
+    </div>
+
+    <form id="loginForm">
+      <label>Email <input name="email" type="email" autocomplete="email" required></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="msg error" id="loginMsg" role="alert"></p>
+      <button class="btn btn-primary btn-block" type="submit">Log in</button>
+      <button class="linkish" type="button" id="forgotLink">Forgot password?</button>
+    </form>
+
+    <form id="signupForm" hidden>
+      <label>Doctor name <input name="doctorName" maxlength="80" placeholder="e.g. Dr. K. Perera" required></label>
+      <label>Dispensary address <textarea name="address" maxlength="200" rows="2" placeholder="e.g. No. 12, Main Street, Ragama"></textarea></label>
+      <label>Email <input name="email" type="email" autocomplete="email" required></label>
+      <label>Password <span class="hint">At least 6 characters</span>
+        <input name="password" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label>Type the password again <input name="password2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <p class="msg error" id="signupMsg" role="alert"></p>
+      <button class="btn btn-primary btn-block" type="submit">Create account</button>
+    </form>
+
+    <form id="resetForm" hidden>
+      <p class="muted small">Enter your email. We will send you a link to set a new password.</p>
+      <label>Email <input name="email" type="email" autocomplete="email" required></label>
+      <p class="msg" id="resetMsg" role="status"></p>
+      <button class="btn btn-primary btn-block" type="submit">Send reset link</button>
+      <button class="linkish" type="button" id="backToLogin">Back to log in</button>
+    </form>
+  </div>
+</main>
+
+<!-- Account exists but no dispensary profile yet -->
+<main id="profileView" class="auth-wrap" hidden>
+  <form id="createProfileForm" class="card auth-card">
+    <h1>Your dispensary details</h1>
+    <p class="muted">Patients will see this name and address.</p>
+    <label>Doctor name <input name="doctorName" maxlength="80" required></label>
+    <label>Dispensary address <textarea name="address" maxlength="200" rows="2"></textarea></label>
+    <p class="msg error" id="createProfileMsg" role="alert"></p>
+    <button class="btn btn-primary btn-block" type="submit">Save</button>
+    <button class="linkish" type="button" data-logout>Log out</button>
+  </form>
+</main>
+
+<!-- Dashboard -->
+<div id="dashView" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2c7a73"/><rect x="27" y="14" width="10" height="36" rx="3" fill="#fff"/><rect x="14" y="27" width="36" height="10" rx="3" fill="#fff"/></svg>
+      <div>
+        <p class="brand-title" id="dName"></p>
+        <p class="muted small" id="dAddress"></p>
+      </div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-ghost btn-sm" id="patientLink" target="_blank" rel="noopener">Open patient screen ↗</a>
+      <button class="btn btn-ghost btn-sm" type="button" data-logout>Log out</button>
+    </div>
+  </header>
+
+  <main class="dash">
+    <section class="card counter-card wide">
+      <p class="label-caps">Now serving</p>
+      <div class="counter">
+        <button class="round-btn" id="minusBtn" type="button" aria-label="Go back one number">−</button>
+        <input class="counter-input" id="numberInput" type="text" inputmode="numeric" maxlength="4" autocomplete="off"
+               aria-label="Current number. Click to type a new number, then press Enter.">
+        <button class="round-btn primary" id="plusBtn" type="button" aria-label="Next number">+</button>
+      </div>
+      <p class="muted small">Press <b>+</b> to call the next patient. To jump to a number, click the number, type it, then press <b>Enter</b>.</p>
+      <p class="msg error" id="dashMsg" role="alert"></p>
+    </section>
+
+    <section class="card">
+      <h2>Dispensary status</h2>
+      <p class="muted small">Choose <b>Closed</b> when the dispensary is closed. Patients will see “Closed”.</p>
+      <div class="segmented" role="group" aria-label="Dispensary status">
+        <button class="seg open" id="openBtn" type="button"><span class="dot"></span>Open</button>
+        <button class="seg closed" id="closedBtn" type="button"><span class="dot"></span>Closed</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Reset counter</h2>
+      <p class="muted small">The number goes back to 0 automatically every day at midnight. You can also reset it now.</p>
+      <button class="btn btn-danger-soft" id="resetBtn" type="button">Reset to 0</button>
+    </section>
+
+    <section class="card wide">
+      <h2>Patient screen link</h2>
+      <p class="muted small">Share this link with patients (WhatsApp, SMS, QR code), or open it on a TV in the waiting area.</p>
+      <div class="row">
+        <input id="shareLink" readonly aria-label="Patient screen link">
+        <button class="btn btn-ghost" id="copyBtn" type="button">Copy</button>
+      </div>
+    </section>
+
+    <section class="card wide">
+      <h2>Dispensary details</h2>
+      <form id="profileForm">
+        <label>Doctor name <input name="doctorName" maxlength="80" required></label>
+        <label>Dispensary address <textarea name="address" maxlength="200" rows="2"></textarea></label>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Save details</button>
+          <span class="msg" id="profileMsg" role="status"></span>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+/* =====================================================================
+   // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBXzyAzoiU2NgDDdA5OEvSzj7FJqWxGfMw",
+  authDomain: "quetracker-7a3fa.firebaseapp.com",
+  projectId: "quetracker-7a3fa",
+  storageBucket: "quetracker-7a3fa.firebasestorage.app",
+  messagingSenderId: "341016735755",
+  appId: "1:341016735755:web:4f2cc369b11a6bc194570e",
+  measurementId: "G-48MLHWTHQ4"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+
+/* 2) After all doctors have created their accounts, change true to false
+      so nobody else can create an account. */
+const ALLOW_SIGNUP = true;
+
+/* 3) Time zone used for the midnight reset. */
+const TIME_ZONE = "Asia/Colombo";
+/* ===================================================================== */
+
+const FB = "https://www.gstatic.com/firebasejs/12.19.0";
+const $ = (id) => document.getElementById(id);
+const views = ["setupView", "loadingView", "authView", "profileView", "dashView"];
+const show = (name) => views.forEach((v) => { $(v).hidden = v !== name; });
+
+if (firebaseConfig.apiKey.startsWith("PASTE")) {
+  show("setupView");
+} else {
+  start().catch((err) => {
+    console.error(err);
+    show("setupView");
+  });
+}
+
+async function start() {
+  const { initializeApp } = await import(`${FB}/firebase-app.js`);
+  const {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    sendPasswordResetEmail, signOut,
+  } = await import(`${FB}/firebase-auth.js`);
+  const {
+    getFirestore, doc, setDoc, updateDoc, onSnapshot, serverTimestamp, increment,
+  } = await import(`${FB}/firebase-firestore.js`);
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let user = null;
+  let data = null;          // the dispensary document as last seen
+  let stopListening = null;
+  let signingUp = false;
+  let editing = false;
+  const input = $("numberInput");
+
+  const todayKey = () => new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+  const myDoc = () => doc(db, "dispensaries", user.uid);
+  const currentNumber = () => (data && data.date === todayKey() ? data.number : 0);
+  const clean = (v, max) => String(v || "").replace(/\s+/g, " ").trim().slice(0, max);
+
+  function friendly(err) {
+    const code = (err && err.code) || "";
+    const map = {
+      "auth/invalid-credential": "Wrong email or password.",
+      "auth/wrong-password": "Wrong email or password.",
+      "auth/user-not-found": "Wrong email or password.",
+      "auth/invalid-email": "Please enter a correct email address.",
+      "auth/email-already-in-use": "An account with this email already exists. Please log in.",
+      "auth/weak-password": "Password must be at least 6 characters.",
+      "auth/too-many-requests": "Too many tries. Please wait a few minutes and try again.",
+      "auth/network-request-failed": "No internet connection. Please check and try again.",
+      "auth/operation-not-allowed": "Email login is not turned on in Firebase yet (see setup guide, step 3).",
+      "permission-denied": "Not allowed. Check the Firestore rules in the setup guide (step 4).",
+      "unavailable": "No internet connection. Changes will be sent when you are back online.",
+    };
+    return map[code] || (err && err.message) || "Something went wrong. Please try again.";
+  }
+
+  /* ---------- tabs on the login card ---------- */
+  function setTab(name) {
+    $("loginForm").hidden = name !== "login";
+    $("signupForm").hidden = name !== "signup";
+    $("resetForm").hidden = name !== "reset";
+    $("tabs").hidden = name === "reset" || !ALLOW_SIGNUP;
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+    $("authTitle").textContent = name === "signup" ? "Create doctor account" : name === "reset" ? "Reset password" : "Doctor login";
+    $("authSub").textContent = name === "signup"
+      ? "Do this once for each dispensary."
+      : "Log in to update the number for your dispensary.";
+  }
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => setTab(t.dataset.tab)));
+  $("forgotLink").addEventListener("click", () => setTab("reset"));
+  $("backToLogin").addEventListener("click", () => setTab("login"));
+  setTab("login");
+
+  /* ---------- log in / sign up / reset ---------- */
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, btn = f.querySelector("[type=submit]");
+    btn.disabled = true; $("loginMsg").textContent = "";
+    try {
+      await signInWithEmailAndPassword(auth, f.email.value.trim(), f.password.value);
+      f.reset();
+    } catch (err) { $("loginMsg").textContent = friendly(err); }
+    finally { btn.disabled = false; }
+  });
+
+  $("signupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, btn = f.querySelector("[type=submit]");
+    const msg = $("signupMsg");
+    msg.textContent = "";
+    if (!ALLOW_SIGNUP) { msg.textContent = "New accounts are turned off."; return; }
+    if (f.password.value !== f.password2.value) { msg.textContent = "The two passwords are not the same."; return; }
+    const doctorName = clean(f.doctorName.value, 80);
+    if (!doctorName) { msg.textContent = "Please enter the doctor name."; return; }
+    btn.disabled = true;
+    signingUp = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, f.email.value.trim(), f.password.value);
+      await setDoc(doc(db, "dispensaries", cred.user.uid), {
+        doctorName, address: clean(f.address.value, 200),
+        number: 0, open: true, date: todayKey(), updatedAt: serverTimestamp(),
+      });
+      f.reset();
+    } catch (err) {
+      msg.textContent = friendly(err);
+    } finally {
+      signingUp = false;
+      btn.disabled = false;
+    }
+  });
+
+  $("resetForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("resetMsg");
+    try {
+      await sendPasswordResetEmail(auth, e.target.email.value.trim());
+      msg.className = "msg ok";
+      msg.textContent = "If this email has an account, a reset link has been sent. Check your inbox and spam folder.";
+    } catch (err) {
+      msg.className = "msg error";
+      msg.textContent = friendly(err);
+    }
+  });
+
+  document.querySelectorAll("[data-logout]").forEach((b) => b.addEventListener("click", () => signOut(auth)));
+
+  /* ---------- profile created later (e.g. account made in Firebase console) ---------- */
+  $("createProfileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const doctorName = clean(f.doctorName.value, 80);
+    if (!doctorName) return;
+    try {
+      await setDoc(myDoc(), {
+        doctorName, address: clean(f.address.value, 200),
+        number: 0, open: true, date: todayKey(), updatedAt: serverTimestamp(),
+      });
+    } catch (err) { $("createProfileMsg").textContent = friendly(err); }
+  });
+
+  /* ---------- watch the logged-in doctor's dispensary ---------- */
+  onAuthStateChanged(auth, (u) => {
+    if (stopListening) { stopListening(); stopListening = null; }
+    user = u; data = null;
+    if (!u) { show("authView"); return; }
+    show("loadingView");
+    stopListening = onSnapshot(myDoc(), (snap) => {
+      if (!snap.exists()) {
+        if (!signingUp) show("profileView");
+        return;
+      }
+      data = snap.data();
+      render();
+      show("dashView");
+      resetIfNewDay();
+    }, (err) => {
+      show("profileView");
+      $("createProfileMsg").textContent = friendly(err);
+    });
+  });
+
+  function render() {
+    const n = currentNumber();
+    $("dName").textContent = data.doctorName;
+    $("dAddress").textContent = data.address || "";
+    document.title = `${n} · ${data.doctorName}`;
+    if (!editing) input.value = n;
+    $("minusBtn").disabled = n <= 0;
+    $("openBtn").classList.toggle("active", data.open);
+    $("closedBtn").classList.toggle("active", !data.open);
+    $("openBtn").setAttribute("aria-pressed", String(data.open));
+    $("closedBtn").setAttribute("aria-pressed", String(!data.open));
+    const link = new URL(`patient.html?d=${user.uid}`, location.href).href;
+    $("patientLink").href = link;
+    $("shareLink").value = link;
+    const pf = $("profileForm");
+    if (!pf.contains(document.activeElement)) {
+      pf.doctorName.value = data.doctorName;
+      pf.address.value = data.address || "";
+    }
+  }
+
+  /* ---------- changing the number ---------- */
+  async function save(changes) {
+    $("dashMsg").textContent = "";
+    try {
+      await updateDoc(myDoc(), { ...changes, date: todayKey(), updatedAt: serverTimestamp() });
+    } catch (err) {
+      $("dashMsg").textContent = friendly(err);
+    }
+  }
+
+  function resetIfNewDay() {
+    if (data && data.date !== todayKey()) save({ number: 0 });
+  }
+  setInterval(resetIfNewDay, 30000); // also catches midnight while the page stays open
+
+  const isToday = () => data && data.date === todayKey();
+
+  $("plusBtn").addEventListener("click", () => {
+    if (!data) return;
+    save({ number: isToday() ? increment(1) : 1 });
+  });
+  $("minusBtn").addEventListener("click", () => {
+    if (!data || currentNumber() <= 0) return;
+    save({ number: increment(-1) });
+  });
+  $("resetBtn").addEventListener("click", () => {
+    if (confirm("Reset the number to 0 now?")) save({ number: 0 });
+  });
+  $("openBtn").addEventListener("click", () => save({ open: true }));
+  $("closedBtn").addEventListener("click", () => save({ open: false }));
+
+  // Click the number and type
+  input.addEventListener("focus", () => { editing = true; input.select(); });
+  input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, "").slice(0, 4); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { input.value = currentNumber(); input.blur(); }
+  });
+  input.addEventListener("blur", () => {
+    editing = false;
+    if (!data) return;
+    const v = input.value.trim();
+    if (v === String(currentNumber())) return;
+    if (!/^\d{1,4}$/.test(v)) {
+      input.value = currentNumber();
+      $("dashMsg").textContent = "Please type a number from 0 to 9999.";
+      return;
+    }
+    save({ number: Number(v) });
+  });
+
+  // Keyboard: + or → next, − or ← back (when not typing in a box)
+  document.addEventListener("keydown", (e) => {
+    if ($("dashView").hidden || e.target.closest("input, textarea") || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (["+", "=", "ArrowRight"].includes(e.key)) { e.preventDefault(); $("plusBtn").click(); }
+    if (["-", "ArrowLeft"].includes(e.key)) { e.preventDefault(); $("minusBtn").click(); }
+  });
+
+  // Copy link
+  $("copyBtn").addEventListener("click", async () => {
+    const field = $("shareLink");
+    try { await navigator.clipboard.writeText(field.value); }
+    catch { field.select(); document.execCommand("copy"); }
+    $("copyBtn").textContent = "Copied ✓";
+    setTimeout(() => { $("copyBtn").textContent = "Copy"; }, 1800);
+  });
+
+  // Edit name / address
+  $("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, msg = $("profileMsg");
+    const doctorName = clean(f.doctorName.value, 80);
+    if (!doctorName) { msg.className = "msg error"; msg.textContent = "Please enter the doctor name."; return; }
+    try {
+      await updateDoc(myDoc(), { doctorName, address: clean(f.address.value, 200), updatedAt: serverTimestamp() });
+      f.querySelector("[type=submit]").focus();
+      msg.className = "msg ok"; msg.textContent = "Saved.";
+      setTimeout(() => { msg.textContent = ""; }, 2500);
+    } catch (err) { msg.className = "msg error"; msg.textContent = friendly(err); }
+  });
+}
+</script>
+</body>
+</html>
